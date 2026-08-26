@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Single light theme only. Dark mode would double the design surface of every
+   screen for no marks, and a mis-contrasted dark render is a risk in the demo
+   video, which carries 25%. */
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+}
