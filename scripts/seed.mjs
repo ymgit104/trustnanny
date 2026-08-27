@@ -1,20 +1,26 @@
 /**
- * DEMO-01 / DEMO-02. Seeds the demo community, and doubles as the reset:
- * running it again wipes the demo accounts and rebuilds the same state, so a
- * retake never needs anything but `npm run seed`.
+ * DEMO-01. Seeds the demo community from scratch: accounts, history, and the
+ * armed shift.
  *
- * Auth users cannot be created from plain SQL, so this goes through
- * auth.admin.createUser with the service-role key. Deleting an auth user
- * cascades to its profile, and from there to shifts and offers, which is what
- * makes the reset a single delete rather than a careful teardown.
+ * The definition of the demo itself lives in src/lib/demo-state.mjs, shared
+ * with the in-app reset route so the two cannot drift. This file owns only what
+ * the route cannot do: creating auth users, which is impossible from plain SQL
+ * and needs the service-role key.
  */
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createClient } from "@supabase/supabase-js";
+import {
+  buildArmedShiftRow,
+  buildHistoryRows,
+  CAREGIVERS,
+  DEMO_PASSWORD,
+  NO_SHOW_KEY,
+  PARENT,
+} from "../src/lib/demo-state.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
-const PASSWORD = "demo1234";
 
 // ---------------------------------------------------------------------------
 // Environment
@@ -47,124 +53,20 @@ const admin = createClient(
   { auth: { persistSession: false, autoRefreshToken: false } },
 );
 
-/** Unwraps a Supabase result, failing loudly with context. */
 function must(label, { data, error }) {
   if (error) throw new Error(`${label}: ${error.message}`);
   return data;
 }
 
-// ---------------------------------------------------------------------------
-// Dates
-//
-// shift_date and start_time are naive date/time columns, so everything is
-// computed in the machine's local timezone - the demo is watched by a person
-// in their own timezone, not in UTC.
-// ---------------------------------------------------------------------------
-
-const pad = (n) => String(n).padStart(2, "0");
-const isoDate = (d) =>
-  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const isoTime = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
-
-function daysAgo(n) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d;
-}
-
-/**
- * end_time must be greater than start_time - they are times of day, not
- * timestamps, so a shift that would run past midnight violates
- * shift_ends_after_it_starts. Clamp rather than wrap.
- */
-function endTimeAfter(start, hours) {
-  const end = new Date(start.getTime() + hours * 60 * 60 * 1000);
-  return isoDate(end) === isoDate(start) ? isoTime(end) : "23:59:00";
-}
-
-// ---------------------------------------------------------------------------
-// The cast
-// ---------------------------------------------------------------------------
-
-const PARENT = {
-  email: "priya@example.com",
-  full_name: "Priya Reddy",
-  profile: {
-    block: "B",
-    flat: "804",
-    plan_tier: "standard",
-    backup_credits_remaining: 4,
-    // Under 36 months, so a replacement must be level 2 or above. Every
-    // caregiver below clears that bar, or the demo search would find nobody.
-    youngest_child_age_months: 14,
-    // Static, like plan_tier: the dashboard's insurance card reads a real
-    // column rather than printing a hardcoded word.
-    insurance_policy_no: "TN-FAM-11204",
-    insurance_valid_to: "2027-08-31",
-  },
-};
-
-const CAREGIVERS = [
-  {
-    key: "meera",
-    email: "meera@example.com",
-    full_name: "Meera Pillai",
-    // Known, and the longest tenure, so she ranks first for Priya.
-    completedShiftsForPriya: 2,
-    profile: {
-      level: 3,
-      certifications: ["Infant CPR", "Paediatric first aid", "Newborn care"],
-      police_verified_on: "2025-11-14",
-      police_station: "Kondapur",
-      tenure_months: 42,
-      insurance_policy_no: "TN-INS-40221",
-      insurance_valid_to: "2027-03-31",
-      is_available: true,
-    },
-  },
-  {
-    key: "lakshmi",
-    email: "lakshmi@example.com",
-    full_name: "Lakshmi Devi",
-    // Known, shorter tenure. She is the one who fails to show, which leaves
-    // Meera as the top-ranked replacement.
-    completedShiftsForPriya: 1,
-    profile: {
-      level: 2,
-      certifications: ["Infant CPR", "Paediatric first aid"],
-      police_verified_on: "2026-01-22",
-      police_station: "Gachibowli",
-      tenure_months: 26,
-      insurance_policy_no: "TN-INS-40588",
-      insurance_valid_to: "2027-01-31",
-      is_available: true,
-    },
-  },
-  {
-    key: "anjali",
-    email: "anjali@example.com",
-    full_name: "Anjali Menon",
-    // DEMO-03: eligible but never worked for Priya, so ranking visibly sorts
-    // her below the known two and the consent gate applies to her.
-    completedShiftsForPriya: 0,
-    profile: {
-      level: 2,
-      certifications: ["Paediatric first aid"],
-      police_verified_on: "2026-05-09",
-      police_station: "Madhapur",
-      tenure_months: 8,
-      insurance_policy_no: "TN-INS-41903",
-      insurance_valid_to: "2027-06-30",
-      is_available: true,
-    },
-  },
-];
-
 // Left over from manual testing before the seed existed.
-const STALE_ACCOUNTS = ["priya.test@example.com"];
+const STALE_ACCOUNTS = ["priya.test@example.com", "other.family@example.com"];
 
 // ---------------------------------------------------------------------------
 // Wipe
+//
+// Deleting an auth user cascades to its profile, and from there to shifts and
+// offers, which is what makes the reset a single delete rather than a careful
+// teardown.
 // ---------------------------------------------------------------------------
 
 async function wipe() {
@@ -181,7 +83,8 @@ async function wipe() {
 
   for (const user of doomed) {
     const { error: delError } = await admin.auth.admin.deleteUser(user.id);
-    if (delError) throw new Error(`deleteUser ${user.email}: ${delError.message}`);
+    if (delError)
+      throw new Error(`deleteUser ${user.email}: ${delError.message}`);
   }
 
   return doomed.length;
@@ -201,7 +104,7 @@ async function wipe() {
 async function createAccount({ email, full_name, extraMetadata = {} }) {
   const { data, error } = await admin.auth.admin.createUser({
     email,
-    password: PASSWORD,
+    password: DEMO_PASSWORD,
     email_confirm: true,
     user_metadata: { full_name, ...extraMetadata },
   });
@@ -220,7 +123,11 @@ async function seedParent() {
 
   must(
     "update parent profile",
-    await admin.from("profiles").update(PARENT.profile).eq("id", id).select("id"),
+    await admin
+      .from("profiles")
+      .update(PARENT.profile)
+      .eq("id", id)
+      .select("id"),
   );
 
   return id;
@@ -250,56 +157,6 @@ async function seedCaregiver(caregiver) {
 }
 
 // ---------------------------------------------------------------------------
-// Shifts
-// ---------------------------------------------------------------------------
-
-function historyRows(familyId, caregiverIds) {
-  // Three completed shifts. Rule 2 derives "known" from exactly these rows, so
-  // this is the entire reason Meera and Lakshmi rank above Anjali.
-  const plan = [
-    { key: "meera", days: 21 },
-    { key: "meera", days: 14 },
-    { key: "lakshmi", days: 7 },
-  ];
-
-  return plan.map(({ key, days }) => {
-    const day = daysAgo(days);
-    const checkedIn = new Date(day);
-    checkedIn.setHours(9, 2, 0, 0);
-
-    return {
-      family_id: familyId,
-      caregiver_id: caregiverIds[key],
-      shift_date: isoDate(day),
-      start_time: "09:00:00",
-      end_time: "17:00:00",
-      status: "completed",
-      checkin_at: checkedIn.toISOString(),
-      search_status: "none",
-      notes: null,
-    };
-  });
-}
-
-function todayShiftRow(familyId, caregiverIds) {
-  // 25 minutes in the past, so the "hasn't checked in" state is already true
-  // the moment you sign in and the no-show flow is armed with no waiting.
-  const start = new Date(Date.now() - 25 * 60 * 1000);
-
-  return {
-    family_id: familyId,
-    caregiver_id: caregiverIds.lakshmi,
-    shift_date: isoDate(start),
-    start_time: isoTime(start),
-    end_time: endTimeAfter(start, 8),
-    status: "scheduled",
-    checkin_at: null,
-    search_status: "none",
-    notes: "Nap at 1pm. Bottle in the fridge.",
-  };
-}
-
-// ---------------------------------------------------------------------------
 // Run
 // ---------------------------------------------------------------------------
 
@@ -320,23 +177,35 @@ async function main() {
     );
   }
 
-  const history = historyRows(familyId, caregiverIds);
-  must("insert completed shifts", await admin.from("shifts").insert(history).select("id"));
+  const history = buildHistoryRows(familyId, caregiverIds);
+  must(
+    "insert completed shifts",
+    await admin.from("shifts").insert(history).select("id"),
+  );
   console.log(`  history      ${history.length} completed shifts`);
 
-  const today = todayShiftRow(familyId, caregiverIds);
-  must("insert today's shift", await admin.from("shifts").insert(today).select("id"));
+  const today = buildArmedShiftRow(familyId, caregiverIds[NO_SHOW_KEY]);
+  must(
+    "insert today's shift",
+    await admin.from("shifts").insert(today).select("id"),
+  );
   console.log(
     `  today        ${today.start_time} on ${today.shift_date}, started 25 minutes ago, not checked in`,
   );
 
   const known = CAREGIVERS.filter((c) => c.completedShiftsForPriya > 0);
   const unknown = CAREGIVERS.filter((c) => c.completedShiftsForPriya === 0);
+  const noShow = CAREGIVERS.find((c) => c.key === NO_SHOW_KEY);
 
-  console.log("\nSign in with any of these. Password for all: " + PASSWORD + "\n");
+  console.log(
+    `\nSign in with any of these. Password for all: ${DEMO_PASSWORD}\n`,
+  );
   console.log(`  parent       ${PARENT.email}`);
   for (const caregiver of CAREGIVERS) {
-    const tag = caregiver.completedShiftsForPriya > 0 ? "known" : "never worked for Priya";
+    const tag =
+      caregiver.completedShiftsForPriya > 0
+        ? "known"
+        : "never worked for Priya";
     console.log(`  caregiver    ${caregiver.email.padEnd(22)} ${tag}`);
   }
 
@@ -346,7 +215,7 @@ async function main() {
       .join(", ")}, who needs consent before any offer.`,
   );
   console.log(
-    `${CAREGIVERS.find((c) => c.key === "lakshmi").full_name} is on today's shift and has not checked in.`,
+    `${noShow.full_name} is on today's shift and has not checked in.`,
   );
 }
 

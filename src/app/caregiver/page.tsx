@@ -2,6 +2,7 @@ import {
   CaregiverPanel,
   type CaregiverShift,
 } from "@/components/caregiver-panel";
+import { DemoBar } from "@/components/demo-bar";
 import { SignOutButton } from "@/components/sign-out-button";
 import { requireRole } from "@/lib/auth";
 import { parseLocalDate } from "@/lib/format";
@@ -53,6 +54,8 @@ export default async function CaregiverDashboard() {
         </div>
         <SignOutButton />
       </header>
+
+      {process.env.ENABLE_DEMO_RESET === "true" && <DemoBar />}
 
       <CaregiverPanel offers={offers} shifts={rows} />
     </main>

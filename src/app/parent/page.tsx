@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { DemoBar } from "@/components/demo-bar";
 import { ParentShiftPanel } from "@/components/parent-shift-panel";
 import { SignOutButton } from "@/components/sign-out-button";
 import { requireRole } from "@/lib/auth";
@@ -32,6 +33,8 @@ export default async function ParentDashboard() {
         </div>
         <SignOutButton />
       </header>
+
+      {process.env.ENABLE_DEMO_RESET === "true" && <DemoBar />}
 
       {shift === null || snapshot === null ? (
         <p className="rounded-lg border border-dashed border-neutral-300 p-6 text-sm text-neutral-600">

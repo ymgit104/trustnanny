@@ -38,7 +38,9 @@ export function CaregiverPanel({
   shifts: CaregiverShift[];
 }) {
   const router = useRouter();
-  const [busyId, setBusyId] = useState<string | null>(null);
+  // Tracks which action is in flight, not just which card, so the button can
+  // say what it is doing rather than showing a bare ellipsis.
+  const [busy, setBusy] = useState<{ id: string; action: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // An offer arrives while she is already looking at this screen, so it has to
@@ -50,12 +52,16 @@ export function CaregiverPanel({
   }, [router]);
 
   const run = useCallback(
-    async (key: string, action: () => Promise<{ error: string } | void>) => {
-      setBusyId(key);
+    async (
+      key: string,
+      name: string,
+      action: () => Promise<{ error: string } | void>,
+    ) => {
+      setBusy({ id: key, action: name });
       setError(null);
       const result = await action();
       if (result?.error) setError(result.error);
-      setBusyId(null);
+      setBusy(null);
       router.refresh();
     },
     [router],
@@ -127,25 +133,33 @@ export function CaregiverPanel({
               <div className="flex gap-2">
                 <button
                   type="button"
-                  disabled={busyId === offer.id}
+                  disabled={busy?.id === offer.id}
                   onClick={() =>
-                    run(offer.id, () => respondToOffer(offer.id, "accepted"))
+                    run(offer.id, "accept", () =>
+                      respondToOffer(offer.id, "accepted"),
+                    )
                   }
                   className="flex-1 rounded-md bg-neutral-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-800 disabled:opacity-50"
                 >
-                  {busyId === offer.id ? "…" : "Accept"}
+                  {busy?.id === offer.id && busy.action === "accept"
+                    ? "Accepting…"
+                    : "Accept"}
                 </button>
                 {/* RULE 5. Declining costs her nothing, so it is a plain
                     button, not a reluctant link buried in small print. */}
                 <button
                   type="button"
-                  disabled={busyId === offer.id}
+                  disabled={busy?.id === offer.id}
                   onClick={() =>
-                    run(offer.id, () => respondToOffer(offer.id, "declined"))
+                    run(offer.id, "decline", () =>
+                      respondToOffer(offer.id, "declined"),
+                    )
                   }
                   className="rounded-md border border-neutral-300 px-4 py-2.5 text-sm font-medium transition hover:bg-neutral-50 disabled:opacity-50"
                 >
-                  Can&apos;t make it
+                  {busy?.id === offer.id && busy.action === "decline"
+                    ? "Declining…"
+                    : "Can't make it"}
                 </button>
               </div>
             </article>
@@ -191,11 +205,15 @@ export function CaregiverPanel({
                   {shift.canCheckIn && (
                     <button
                       type="button"
-                      disabled={busyId === shift.id}
-                      onClick={() => run(shift.id, () => checkIn(shift.id))}
+                      disabled={busy?.id === shift.id}
+                      onClick={() =>
+                        run(shift.id, "checkin", () => checkIn(shift.id))
+                      }
                       className="rounded-md bg-neutral-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:opacity-50"
                     >
-                      {busyId === shift.id ? "…" : "I've arrived"}
+                      {busy?.id === shift.id
+                        ? "Checking in…"
+                        : "I've arrived"}
                     </button>
                   )}
                 </div>

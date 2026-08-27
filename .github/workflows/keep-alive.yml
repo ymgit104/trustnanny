@@ -1,0 +1,70 @@
+name: Keep Supabase awake
+
+# Free Supabase projects pause after 7 days of inactivity, and a paused project
+# does not wake on a visit - it has to be restored by hand from the dashboard.
+# A grader opening the link a week after submission would find a dead app. This
+# pings a route that runs a real query, which is what actually resets the timer.
+#
+# TWO THINGS TO KNOW:
+#
+#   1. Cron here runs in UTC, always. It does not follow your local timezone and
+#      it does not shift for daylight saving. 06:00 UTC is 11:30 IST.
+#
+#   2. GitHub disables scheduled workflows on a repository with no commits for
+#      60 days, and emails the owner rather than failing loudly. On a finished
+#      assignment that is exactly the situation this guards against - so if the
+#      repo goes quiet, either re-enable the schedule from the Actions tab or
+#      run it by hand with the "Run workflow" button below.
+#
+# Setup: add a repository secret named APP_URL, with no trailing slash, e.g.
+# https://trustnanny-coral.vercel.app  (Settings -> Secrets and variables ->
+# Actions -> New repository secret)
+
+on:
+  schedule:
+    # Mondays and Thursdays at 06:00 UTC. Twice a week comfortably beats a
+    # 7-day timer even if one run is skipped or delayed - GitHub does not
+    # guarantee punctual scheduling on a busy queue.
+    - cron: "0 6 * * 1,4"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping keep-alive
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${APP_URL}" ]; then
+            echo "APP_URL secret is not set. Add it under Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
+
+          # Strip a trailing slash so the URL joins cleanly either way.
+          BASE="${APP_URL%/}"
+          echo "Pinging ${BASE}/api/keep-alive"
+
+          # -w writes the status to stdout after the body; -o keeps the body for
+          # the log. No -f, so a non-200 does not abort before it can be shown.
+          BODY_FILE="$(mktemp)"
+          STATUS="$(curl -sS -m 30 -o "${BODY_FILE}" -w '%{http_code}' "${BASE}/api/keep-alive")"
+
+          echo "HTTP ${STATUS}"
+          echo "Response: $(cat "${BODY_FILE}")"
+
+          if [ "${STATUS}" != "200" ]; then
+            echo "::error::keep-alive returned HTTP ${STATUS}, expected 200"
+            exit 1
+          fi
+
+          # A 200 with ok:false means the route was reached but the database was
+          # not, which is the failure this workflow exists to catch.
+          if ! grep -q '"ok":true' "${BODY_FILE}"; then
+            echo "::error::keep-alive responded 200 but did not report ok:true"
+            exit 1
+          fi
+
+          echo "Supabase reached."
