@@ -1,34 +1,26 @@
-// Placeholder home page. Exists only to prove the skeleton renders: Tailwind
-// utilities, the system sans stack, and the mono/tabular stack used for shift
-// times. Replaced once the real routes land.
-export default function Home() {
-  return (
-    <main className="mx-auto flex min-h-screen max-w-xl flex-col justify-center gap-6 px-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">TrustNanny</h1>
-        <p className="mt-1 text-neutral-600">
-          Childcare that never doesn&apos;t show up.
-        </p>
-      </div>
+import { redirect } from "next/navigation";
+import { getSessionState } from "@/lib/auth";
+import { createClient } from "@/lib/supabase/server";
 
-      <dl className="space-y-2 rounded-lg border border-neutral-200 p-4 text-sm">
-        <div className="flex justify-between">
-          <dt className="text-neutral-600">Skeleton</dt>
-          <dd className="font-medium">Running</dd>
-        </div>
-        <div className="flex justify-between">
-          <dt className="text-neutral-600">Shift time</dt>
-          <dd className="font-mono tabular-nums">09:00 &ndash; 17:30</dd>
-        </div>
-        <div className="flex justify-between">
-          <dt className="text-neutral-600">Elapsed</dt>
-          <dd className="font-mono tabular-nums">00:11 / 90:00</dd>
-        </div>
-      </dl>
+/**
+ * The only place that routes by role. Middleware deliberately does not do this,
+ * because it would put a database query on every request; this runs once, on
+ * the way in.
+ */
+export default async function Home() {
+  const state = await getSessionState();
 
-      <p className="text-sm text-neutral-500">
-        Nothing is wired up yet. Auth, shifts and dispatch come next.
-      </p>
-    </main>
-  );
+  if (state.status === "signed-out") redirect("/login");
+
+  // A valid auth user with no profile row means the signup trigger did not
+  // fire. Signing the session out is the only way to break the loop: middleware
+  // would otherwise keep sending them here, and every page that reads a profile
+  // would crash. Better a clean trip back to /login than a broken account.
+  if (state.status === "orphaned") {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    redirect("/login");
+  }
+
+  redirect(state.profile.role === "caregiver" ? "/caregiver" : "/parent");
 }
