@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
+import { ClearStaleSession } from "@/components/clear-stale-session";
 import { getSessionState } from "@/lib/auth";
-import { createClient } from "@/lib/supabase/server";
 
 /**
  * The only place that routes by role. Middleware deliberately does not do this,
@@ -12,15 +12,14 @@ export default async function Home() {
 
   if (state.status === "signed-out") redirect("/login");
 
-  // A valid auth user with no profile row means the signup trigger did not
-  // fire. Signing the session out is the only way to break the loop: middleware
-  // would otherwise keep sending them here, and every page that reads a profile
-  // would crash. Better a clean trip back to /login than a broken account.
-  if (state.status === "orphaned") {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    redirect("/login");
-  }
+  // A valid token with no profile row - the signup trigger never fired, or the
+  // account was deleted underneath a live session.
+  //
+  // Signing out from here would do nothing: server components cannot write
+  // cookies, so the token would survive, middleware would keep seeing a valid
+  // session, and /login would bounce back here forever. The client component
+  // below calls the sign-out server action instead, which can clear it.
+  if (state.status === "orphaned") return <ClearStaleSession />;
 
   redirect(state.profile.role === "caregiver" ? "/caregiver" : "/parent");
 }

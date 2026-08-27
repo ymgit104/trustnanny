@@ -1,10 +1,43 @@
+import {
+  CaregiverPanel,
+  type CaregiverShift,
+} from "@/components/caregiver-panel";
 import { SignOutButton } from "@/components/sign-out-button";
 import { requireRole } from "@/lib/auth";
+import { parseLocalDate } from "@/lib/format";
+import {
+  listPendingOffersForCaregiver,
+  listShiftsForCaregiver,
+} from "@/lib/queries";
 
-// Placeholder. My shifts, incoming offers and check-in land here in a later
-// step.
 export default async function CaregiverDashboard() {
   const profile = await requireRole("caregiver");
+
+  const [offers, shifts] = await Promise.all([
+    listPendingOffersForCaregiver(profile.id),
+    listShiftsForCaregiver(profile.id),
+  ]);
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const rows: CaregiverShift[] = shifts.map((shift) => ({
+    id: shift.id,
+    shiftDate: shift.shift_date,
+    startTime: shift.start_time,
+    endTime: shift.end_time,
+    status: shift.status,
+    familyName: shift.family?.full_name ?? "A family",
+    block: shift.family?.block ?? null,
+    flat: shift.family?.flat ?? null,
+    notes: shift.notes,
+    // Any shift due today or earlier that she has not arrived at yet. Deliberately
+    // not gated on the exact start time: a caregiver who turns up ten minutes
+    // early should not be told the button is not ready for her.
+    canCheckIn:
+      shift.status === "scheduled" &&
+      parseLocalDate(shift.shift_date).getTime() <= today.getTime(),
+  }));
 
   return (
     <main className="mx-auto flex min-h-screen max-w-xl flex-col gap-6 px-6 py-12">
@@ -13,47 +46,15 @@ export default async function CaregiverDashboard() {
           <h1 className="text-2xl font-semibold tracking-tight">
             Hello, {profile.full_name || "there"}
           </h1>
-          <p className="mt-1 text-sm text-neutral-600">Caregiver dashboard</p>
+          <p className="mt-1 text-sm text-neutral-600">
+            Level {profile.level ?? "—"} · {profile.tenure_months} months with
+            TrustNanny
+          </p>
         </div>
         <SignOutButton />
       </header>
 
-      <dl className="space-y-2 rounded-lg border border-neutral-200 p-4 text-sm">
-        <Row label="Role" value={profile.role} />
-        <Row
-          label="Level"
-          value={profile.level === null ? "Not set" : String(profile.level)}
-          mono={profile.level !== null}
-        />
-        <Row label="Tenure" value={`${profile.tenure_months} months`} mono />
-        <Row
-          label="Available"
-          value={profile.is_available ? "Yes" : "No"}
-        />
-      </dl>
-
-      <p className="text-sm text-neutral-500">
-        Your shifts and incoming offers arrive next.
-      </p>
+      <CaregiverPanel offers={offers} shifts={rows} />
     </main>
-  );
-}
-
-function Row({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
-  return (
-    <div className="flex justify-between gap-4">
-      <dt className="text-neutral-600">{label}</dt>
-      <dd className={mono ? "font-mono tabular-nums" : "font-medium"}>
-        {value}
-      </dd>
-    </div>
   );
 }

@@ -27,7 +27,12 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    // Everything except static assets and images, which never need a session.
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
+    // Everything except static assets, images, and API routes.
+    //
+    // API routes are excluded because they gate themselves - the demo reset is
+    // guarded by an environment variable, not by a session - and because
+    // redirecting a fetch() to an HTML login page hands the caller a page to
+    // parse as JSON instead of an honest 401.
+    "/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico)$).*)",
   ],
 };

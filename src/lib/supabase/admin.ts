@@ -26,6 +26,17 @@ export function createAdminClient() {
       // This client is never a signed-in user, so the session machinery is
       // wrong for it: nothing to persist, nothing to refresh.
       auth: { persistSession: false, autoRefreshToken: false },
+
+      // Opt every query out of Next's fetch cache and React's per-request
+      // memoisation. Supabase queries are GETs, so two identical reads in one
+      // request are otherwise deduplicated and the second silently replays the
+      // first's response. That is wrong for a database: dispatch reads
+      // availability, a caregiver's state changes, and the re-read returns the
+      // stale row. Caught this exact failure - a caregiver marked unavailable
+      // was still being offered shifts.
+      global: {
+        fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }),
+      },
     },
   );
 }

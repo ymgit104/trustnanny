@@ -81,7 +81,12 @@ export default function LoginPage() {
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+      {/* method="post" is not decoration. Without it, a submit that happens
+          before React hydrates falls back to the browser default of GET, and
+          the password lands in the URL, the history and the server access log.
+          The handler below normally prevents that, but it cannot run if the
+          bundle has not loaded yet. */}
+      <form method="post" onSubmit={handleSubmit} className="flex flex-col gap-4">
         {isSignUp && (
           <Field label="Your name" htmlFor="full_name">
             <input

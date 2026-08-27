@@ -97,6 +97,10 @@ const PARENT = {
     // Under 36 months, so a replacement must be level 2 or above. Every
     // caregiver below clears that bar, or the demo search would find nobody.
     youngest_child_age_months: 14,
+    // Static, like plan_tier: the dashboard's insurance card reads a real
+    // column rather than printing a hardcoded word.
+    insurance_policy_no: "TN-FAM-11204",
+    insurance_valid_to: "2027-08-31",
   },
 };
 
