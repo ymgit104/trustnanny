@@ -42,7 +42,7 @@ export function ShiftForm({
 
   if (caregivers.length === 0) {
     return (
-      <p className="rounded-lg border border-neutral-200 p-4 text-sm text-neutral-600">
+      <p className="rounded-lg border border-dashed border-edge-strong bg-white/60 p-5 text-sm text-ink-soft">
         No caregivers are available in your community right now, so there is
         nobody to schedule. Try again once one is back on.
       </p>
@@ -124,7 +124,7 @@ export function ShiftForm({
       {error && (
         <p
           role="alert"
-          className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700"
+          className="rounded border border-critical/20 bg-red-50 px-3 py-2 text-sm text-red-800"
         >
           {error}
         </p>
@@ -134,7 +134,7 @@ export function ShiftForm({
         <button
           type="submit"
           disabled={pending}
-          className="rounded-md bg-neutral-900 px-4 py-2 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:opacity-50"
+          className="btn-primary"
         >
           {pending
             ? "Saving…"
@@ -144,7 +144,7 @@ export function ShiftForm({
         </button>
         <Link
           href="/parent/shifts"
-          className="text-sm text-neutral-600 hover:text-neutral-900"
+          className="font-mono text-xs text-ink-soft transition hover:text-trust"
         >
           Back to shifts
         </Link>
@@ -153,8 +153,7 @@ export function ShiftForm({
   );
 }
 
-const inputClass =
-  "w-full rounded-md border border-neutral-300 px-3 py-2 text-sm outline-none focus:border-neutral-900";
+const inputClass = "field";
 
 function Field({
   label,
@@ -169,11 +168,11 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label htmlFor={htmlFor} className="text-sm font-medium">
+      <label htmlFor={htmlFor} className="label-caps">
         {label}
       </label>
       {children}
-      {hint && <p className="text-xs text-neutral-500">{hint}</p>}
+      {hint && <p className="text-xs text-ink-soft">{hint}</p>}
     </div>
   );
 }

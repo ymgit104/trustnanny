@@ -31,7 +31,7 @@ export function CancelShiftButton({ shiftId }: { shiftId: string }) {
   }
 
   if (error) {
-    return <span className="text-xs text-red-700">{error}</span>;
+    return <span className="font-mono text-xs text-critical">{error}</span>;
   }
 
   if (!confirming) {
@@ -39,7 +39,7 @@ export function CancelShiftButton({ shiftId }: { shiftId: string }) {
       <button
         type="button"
         onClick={() => setConfirming(true)}
-        className="text-sm text-neutral-600 underline-offset-2 hover:text-red-700 hover:underline"
+        className="btn-ghost px-3 py-2 text-xs text-critical hover:border-critical/40 hover:bg-red-50"
       >
         Cancel
       </button>
@@ -48,12 +48,12 @@ export function CancelShiftButton({ shiftId }: { shiftId: string }) {
 
   return (
     <span className="flex items-center gap-2 text-sm">
-      <span className="text-neutral-600">Cancel this shift?</span>
+      <span className="text-ink-soft">Cancel this shift?</span>
       <button
         type="button"
         onClick={handleCancel}
         disabled={pending}
-        className="font-medium text-red-700 hover:underline disabled:opacity-50"
+        className="font-semibold text-critical hover:underline disabled:opacity-50"
       >
         {pending ? "Cancelling…" : "Yes, cancel"}
       </button>
@@ -61,7 +61,7 @@ export function CancelShiftButton({ shiftId }: { shiftId: string }) {
         type="button"
         onClick={() => setConfirming(false)}
         disabled={pending}
-        className="text-neutral-600 hover:text-neutral-900 disabled:opacity-50"
+        className="text-ink-soft hover:text-ink disabled:opacity-50"
       >
         Keep
       </button>

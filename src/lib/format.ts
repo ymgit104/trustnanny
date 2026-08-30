@@ -85,15 +85,3 @@ const STATUS_LABELS: Record<ShiftStatus, string> = {
 export function statusLabel(status: ShiftStatus): string {
   return STATUS_LABELS[status];
 }
-
-const STATUS_CLASSES: Record<ShiftStatus, string> = {
-  scheduled: "bg-neutral-100 text-neutral-700",
-  checked_in: "bg-green-100 text-green-800",
-  completed: "bg-neutral-100 text-neutral-500",
-  absence_reported: "bg-red-100 text-red-800",
-  cancelled: "bg-neutral-100 text-neutral-400 line-through",
-};
-
-export function statusClass(status: ShiftStatus): string {
-  return STATUS_CLASSES[status];
-}

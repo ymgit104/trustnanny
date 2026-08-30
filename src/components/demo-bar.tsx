@@ -45,33 +45,33 @@ export function DemoBar() {
   }
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg border border-dashed border-neutral-300 bg-neutral-50 p-3 text-xs">
+    <div className="flex flex-col gap-2 rounded-lg border border-dashed border-trust/30 bg-trust-tint p-3 text-xs">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span className="font-medium text-neutral-700">Demo</span>
+        <span className="label-caps text-trust">Demo controls</span>
         <button
           type="button"
           onClick={reset}
           disabled={pending}
-          className="rounded-md bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-neutral-800 disabled:opacity-50"
+          className="btn-primary px-3 py-1.5 text-xs"
         >
           {pending ? "Resetting…" : "Reset demo"}
         </button>
       </div>
 
-      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-neutral-600">
+      <ul className="flex flex-wrap gap-x-4 gap-y-1 text-ink-soft">
         {ACCOUNTS.map((account) => (
           <li key={account.email}>
-            <span className="text-neutral-500">{account.label} </span>
+            <span className="text-ink-faint">{account.label} </span>
             <span className="font-mono">{account.email}</span>
           </li>
         ))}
         <li>
-          <span className="text-neutral-500">Password </span>
+          <span className="text-ink-faint">Password </span>
           <span className="font-mono">demo1234</span>
         </li>
       </ul>
 
-      {message && <p className="text-neutral-700">{message}</p>}
+      {message && <p className="text-ink-soft">{message}</p>}
     </div>
   );
 }

@@ -4,6 +4,7 @@ import {
 } from "@/components/caregiver-panel";
 import { DemoBar } from "@/components/demo-bar";
 import { SignOutButton } from "@/components/sign-out-button";
+import { AppHeader } from "@/components/ui";
 import { requireRole } from "@/lib/auth";
 import { parseLocalDate } from "@/lib/format";
 import {
@@ -41,19 +42,12 @@ export default async function CaregiverDashboard() {
   }));
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-xl flex-col gap-6 px-6 py-12">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Hello, {profile.full_name || "there"}
-          </h1>
-          <p className="mt-1 text-sm text-neutral-600">
-            Level {profile.level ?? "—"} · {profile.tenure_months} months with
-            TrustNanny
-          </p>
-        </div>
-        <SignOutButton />
-      </header>
+    <main className="mx-auto flex min-h-screen w-full max-w-app flex-col gap-5 px-4 py-8 sm:px-8">
+      <AppHeader
+        title={`Hello, ${profile.full_name || "there"}`}
+        subtitle={`Level ${profile.level ?? "—"} · ${profile.tenure_months} months with TrustNanny`}
+        action={<SignOutButton />}
+      />
 
       {process.env.ENABLE_DEMO_RESET === "true" && <DemoBar />}
 

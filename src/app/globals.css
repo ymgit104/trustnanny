@@ -6,11 +6,49 @@
    screen for no marks, and a mis-contrasted dark render is a risk in the demo
    video, which carries 25%. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f8fafc; /* Slate-50: softer than white, less harsh at 7:40am */
+  --foreground: #0f172a; /* Slate-900: maximum legibility on a light ground */
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
+}
+
+@layer components {
+  /* Small caps monospace, used for field labels and data headers. Monospace
+     separates "data" from "narrative" and gives the interface a logbook
+     quality, which is the point: this is a record, not a feed. */
+  .label-caps {
+    @apply font-mono text-[0.6875rem] font-semibold uppercase tracking-caps text-ink-faint;
+  }
+
+  /* Surface 1. Hierarchy from a 1px outline rather than a shadow. */
+  .card {
+    @apply rounded-lg border border-edge bg-white;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded px-4 py-2.5
+           text-sm font-semibold transition disabled:opacity-50;
+  }
+
+  .btn-primary {
+    @apply btn bg-trust text-white hover:bg-trust-hover;
+  }
+
+  .btn-ghost {
+    @apply btn border border-edge-strong bg-white text-ink hover:bg-canvas;
+  }
+
+  /* Reserved for the absence report. Nothing else is this loud. */
+  .btn-critical {
+    @apply btn bg-critical text-white hover:bg-red-700;
+  }
+
+  .field {
+    @apply w-full rounded border border-edge-strong bg-white px-3 py-2.5 text-sm
+           text-ink outline-none transition
+           focus:border-trust focus:ring-2 focus:ring-trust/20;
+  }
 }

@@ -25,9 +25,9 @@ export function ClearStaleSession() {
   }, []);
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-2 px-6">
-      <h1 className="text-lg font-semibold">Signing you out</h1>
-      <p className="text-sm text-neutral-600">
+    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-2 px-4">
+      <h1 className="text-lg font-bold text-ink">Signing you out</h1>
+      <p className="text-sm text-ink-soft">
         This account is no longer set up. Taking you back to sign in.
       </p>
     </main>
