@@ -1,3 +1,9 @@
+import {
+  communityDate,
+  communityInstant,
+  communityTime,
+} from "./community-time.mjs";
+
 /**
  * The demo's definition of "armed", shared by `npm run seed` and the in-app
  * reset route so the two can never drift apart.
@@ -16,31 +22,28 @@ export const DEMO_PASSWORD = "demo1234";
 // ---------------------------------------------------------------------------
 // Dates
 //
-// shift_date and start_time are naive columns, so everything is computed in
-// local time - the demo is watched by a person in their timezone, not in UTC.
+// shift_date and start_time are naive columns, so every value written here is
+// the community's wall clock - not the clock of whichever machine ran the seed.
+// Without that, a shift seeded from a laptop in IST reads five and a half hours
+// adrift on a Vercel server running UTC, and "started 25 minutes ago" becomes
+// "starts tomorrow".
 // ---------------------------------------------------------------------------
 
-const pad = (n) => String(n).padStart(2, "0");
-
-export const isoDate = (d) =>
-  `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-
-export const isoTime = (d) => `${pad(d.getHours())}:${pad(d.getMinutes())}:00`;
-
 export function daysAgo(n) {
-  const d = new Date();
-  d.setDate(d.getDate() - n);
-  return d;
+  return new Date(Date.now() - n * 24 * 60 * 60 * 1000);
 }
 
 /**
  * end_time must be greater than start_time, and they are times of day rather
  * than timestamps, so a shift running past midnight would violate
- * shift_ends_after_it_starts. Clamp rather than wrap.
+ * shift_ends_after_it_starts. Clamp rather than wrap - judged on the community's
+ * calendar, since that is whose midnight the columns mean.
  */
 export function endTimeAfter(start, hours) {
   const end = new Date(start.getTime() + hours * 60 * 60 * 1000);
-  return isoDate(end) === isoDate(start) ? isoTime(end) : "23:59:00";
+  return communityDate(end) === communityDate(start)
+    ? communityTime(end)
+    : "23:59:00";
 }
 
 // ---------------------------------------------------------------------------
@@ -142,13 +145,14 @@ export function buildHistoryRows(familyId, caregiverIds) {
 
   return plan.map(({ key, days }) => {
     const day = daysAgo(days);
-    const checkedIn = new Date(day);
-    checkedIn.setHours(9, 2, 0, 0);
+    // checkin_at is a timestamptz - a real instant - so it is derived from the
+    // community's 09:02 on that day rather than the server's.
+    const checkedIn = communityInstant(communityDate(day), "09:02");
 
     return {
       family_id: familyId,
       caregiver_id: caregiverIds[key],
-      shift_date: isoDate(day),
+      shift_date: communityDate(day),
       start_time: "09:00:00",
       end_time: "17:00:00",
       status: "completed",
@@ -169,8 +173,8 @@ export function buildArmedShiftRow(familyId, caregiverId) {
   return {
     family_id: familyId,
     caregiver_id: caregiverId,
-    shift_date: isoDate(start),
-    start_time: isoTime(start),
+    shift_date: communityDate(start),
+    start_time: communityTime(start),
     end_time: endTimeAfter(start, 8),
     status: "scheduled",
     checkin_at: null,

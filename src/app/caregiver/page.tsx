@@ -5,7 +5,7 @@ import {
 import { DemoBar } from "@/components/demo-bar";
 import { SignOutButton } from "@/components/sign-out-button";
 import { requireRole } from "@/lib/auth";
-import { parseLocalDate } from "@/lib/format";
+import { isOnOrBeforeToday } from "@/lib/format";
 import {
   listPendingOffersForCaregiver,
   listShiftsForCaregiver,
@@ -18,9 +18,6 @@ export default async function CaregiverDashboard() {
     listPendingOffersForCaregiver(profile.id),
     listShiftsForCaregiver(profile.id),
   ]);
-
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
 
   const rows: CaregiverShift[] = shifts.map((shift) => ({
     id: shift.id,
@@ -36,8 +33,7 @@ export default async function CaregiverDashboard() {
     // not gated on the exact start time: a caregiver who turns up ten minutes
     // early should not be told the button is not ready for her.
     canCheckIn:
-      shift.status === "scheduled" &&
-      parseLocalDate(shift.shift_date).getTime() <= today.getTime(),
+      shift.status === "scheduled" && isOnOrBeforeToday(shift.shift_date),
   }));
 
   return (

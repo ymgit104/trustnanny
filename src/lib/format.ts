@@ -1,39 +1,51 @@
+import {
+  communityInstant,
+  communityToday,
+  daysBetween,
+} from "@/lib/community-time.mjs";
 import type { ShiftStatus } from "@/lib/types";
 
 /**
- * Builds a local Date from a `YYYY-MM-DD` column.
+ * The instant a stored shift actually begins.
  *
- * `new Date("2026-08-27")` is parsed as UTC midnight, which lands on the
- * previous day for anyone west of Greenwich. Splitting the parts and using the
- * local constructor keeps a date column meaning the day it says.
+ * Reads the naive date and time columns on the community's clock rather than
+ * the server's. Using the server's clock meant the same row answered "has this
+ * started?" differently in local development (IST) and on Vercel (UTC), which
+ * hid the absence button on the live deployment entirely.
  */
-export function parseLocalDate(shiftDate: string): Date {
-  const [year, month, day] = shiftDate.split("-").map(Number);
-  return new Date(year, month - 1, day);
-}
-
-/** Combines the date and time columns into one local instant. */
 export function shiftStartsAt(shiftDate: string, startTime: string): Date {
-  const at = parseLocalDate(shiftDate);
-  const [hours, minutes] = startTime.split(":").map(Number);
-  at.setHours(hours, minutes, 0, 0);
-  return at;
+  return communityInstant(shiftDate, startTime);
 }
 
-const DAY = 24 * 60 * 60 * 1000;
+/** Whether a shift's day has arrived in the community. ISO dates sort, so this
+ *  is a string comparison rather than any date arithmetic. */
+export function isOnOrBeforeToday(shiftDate: string): boolean {
+  return shiftDate <= communityToday();
+}
 
-/** "Today", "Yesterday", "Tomorrow", else "Wed 27 Aug". */
+const RELATIVE: Record<number, string> = {
+  "-1": "Yesterday",
+  0: "Today",
+  1: "Tomorrow",
+};
+
+/**
+ * "Today", "Yesterday", "Tomorrow", else "Wed 27 Aug".
+ *
+ * Relative to today *in the community*, not in whoever's browser is looking.
+ * This runs client-side, so without that the server could call a shift today
+ * while the viewer's device called it yesterday - which is exactly what the
+ * live deployment did.
+ */
 export function formatShiftDate(shiftDate: string): string {
-  const date = parseLocalDate(shiftDate);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const diff = daysBetween(communityToday(), shiftDate);
+  const relative = RELATIVE[diff];
+  if (relative) return relative;
 
-  const diffDays = Math.round((date.getTime() - today.getTime()) / DAY);
-  if (diffDays === 0) return "Today";
-  if (diffDays === -1) return "Yesterday";
-  if (diffDays === 1) return "Tomorrow";
-
-  return date.toLocaleDateString("en-GB", {
+  const [year, month, day] = shiftDate.split("-").map(Number);
+  // Rendered in UTC from a pure date, so the label cannot drift a day either.
+  return new Date(Date.UTC(year, month - 1, day)).toLocaleDateString("en-GB", {
+    timeZone: "UTC",
     weekday: "short",
     day: "numeric",
     month: "short",
